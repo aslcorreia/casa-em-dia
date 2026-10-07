@@ -88,15 +88,15 @@ console.log('AI tests passed: private conversation, role-scoped context, validat
 // A renamed lodging still accepts stays and reads records created before the rename.
 identity='ana@test.pt';
 const renamed='Arroios de Paixão — Quarto';
-tables.records.push({id:'legacy-contact',kind:'supplier',data:{title:'Contacto de teste',area:'Alojamento 1',serviceAreas:['Alojamento 1','Alojamento 2']},version:1,created_by:identity,updated_at:'2026-10-07T00:00:00Z'});
+tables.records.push({id:'legacy-contact',kind:'supplier',data:{title:'Contacto de teste',area:'Alojamento 1',serviceAreas:['Alojamento 1','Alojamento 2','Alojamento 3']},version:1,created_by:identity,updated_at:'2026-10-07T00:00:00Z'});
 let legacy=(await (await get()).json()).items.find(i=>i.id==='legacy-contact');
-assert.equal(legacy.data.area,renamed);assert.deepEqual(legacy.data.serviceAreas,[renamed,'Alojamento 2']);
-for(const area of [renamed,'Alojamento 1','Alojamento 2','Alojamento 3']){
+assert.equal(legacy.data.area,renamed);assert.deepEqual(legacy.data.serviceAreas,[renamed,'Arroios de Paixão — Duplex','Alfama de Paixão']);
+for(const area of [renamed,'Arroios de Paixão — Duplex','Alfama de Paixão','Alojamento 1','Alojamento 2','Alojamento 3']){
  const result=await app.records.POST(req({kind:'stay',data:{title:'Estadia de teste '+area,area,due:'2026-10-09',checkout:'2026-10-11'}}));
  assert.equal(result.status,200,await result.text());
 }
 assert.equal((await app.records.POST(req({kind:'stay',data:{title:'Área inválida',area:'Casa',due:'2026-10-09',checkout:'2026-10-11'}}))).status,400);
-assert(!tables.records.filter(i=>i.kind==='stay').some(i=>i.data.area==='Alojamento 1'));
+assert(!tables.records.filter(i=>i.kind==='stay').some(i=>i.data.area.startsWith('Alojamento')));
 console.log('PASS: legacy contacts retain associations; renamed and existing lodgings accept stays; old clients normalize to the new name.');
 app.jar.clear();assert.equal((await get()).status,401);
 console.log('PASS: email authorization, invalid OTP, verified cookie session, CRUD, concurrent-version conflict, recurrence, employee permissions, private focus and cross-origin rejection. Versioned trash, recovery, history retention and deletion permissions passed. Supabase transport simulated.');

@@ -1,9 +1,11 @@
 import {z} from 'zod';
 export const ARROIOS='Arroios de Paixão — Quarto' as const;
-export const lodgingAreas=[ARROIOS,'Alojamento 2','Alojamento 3'] as const;
+export const DUPLEX='Arroios de Paixão — Duplex' as const;
+export const ALFAMA='Alfama de Paixão' as const;
+export const lodgingAreas=[ARROIOS,DUPLEX,ALFAMA] as const;
 export const areas=['Família','Casa','Quinta · Arruda','Lavandaria',...lodgingAreas] as const;
 // Accept older records and open clients without losing their space associations.
-export const normalizeArea=(value:unknown)=>value==='Alojamento 1'?ARROIOS:value;
+export const normalizeArea=(value:unknown)=>value==='Alojamento 1'?ARROIOS:value==='Alojamento 2'?DUPLEX:value==='Alojamento 3'?ALFAMA:value;
 export const areaSchema=z.preprocess(normalizeArea,z.enum(areas));
 export const isLodgingArea=(value:unknown)=>lodgingAreas.some(area=>area===normalizeArea(value));
 export const states=['Por fazer','Em curso','À espera','Por aprovar','Aprovado','Concluído','Cancelado'] as const;
