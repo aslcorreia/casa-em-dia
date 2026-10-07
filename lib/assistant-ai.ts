@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {areaSchema,areas,Item,Data,recordSchema,maySee,notices} from './model';
+import {areaSchema,areas,Item,Data,recordSchema,maySee,mayUseArea,Member,notices} from './model';
 
 export const AI_MODEL='@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const date=z.string().refine(s=>!s||/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(Date.parse(s+'T12:00:00Z'))&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s,'Data inválida');
@@ -13,7 +13,7 @@ export type Reply=z.infer<typeof replySchema>;
 export type ChatMessage={role:'user'|'assistant';text:string;at:string;actions?:Proposal[]};
 export const outputFormat={type:'json_schema',json_schema:{type:'object',properties:{answer:{type:'string'},actions:{type:'array',maxItems:3,items:{type:'object',properties:{type:{type:'string',enum:['createTask','updateTask']},recordId:{type:'string'},title:{type:'string'},area:{type:'string',enum:[...areas]},assignee:{type:'string'},due:{type:'string'},nextStep:{type:'string'},steps:{type:'array',items:{type:'string'},maxItems:10}},required:['type','recordId','title','area','assignee','due','nextStep','steps'],additionalProperties:false}}},required:['answer','actions'],additionalProperties:false}};
 
-export function contextForAI(items:Item[],member:{name:string;email:string;role:string},today:string,question:string){
+export function contextForAI(items:Item[],member:Member,today:string,question:string){
  const visible=items.filter(i=>!i.data.deletedAt&&maySee(i,member));
  const words=question.toLocaleLowerCase('pt-PT').split(/\s+/).filter(w=>w.length>3),attention=new Set(notices(visible,today).map(a=>a.id));
  const score=(i:Item)=>Number(attention.has(i.id))*20+words.filter(w=>(i.data.title+' '+i.data.area+' '+i.data.description).toLocaleLowerCase('pt-PT').includes(w)).length*30+Number(!['Concluído','Cancelado'].includes(i.data.status))*5;
@@ -23,10 +23,10 @@ export function contextForAI(items:Item[],member:{name:string;email:string;role:
  return {today,user:member.name,role:member.role,totalVisible:visible.length,included:records.length,records};
 }
 
-export function validateProposals(actions:Proposal[],items:Item[],member:{name:string;email:string;role:string},team:string[]){
+export function validateProposals(actions:Proposal[],items:Item[],member:Member,team:string[]){
  return actions.filter(a=>{
   if(!team.includes(a.assignee)&&a.assignee!=='Por atribuir')return false;
-  if(member.role!=='admin'&&(a.area==='Família'||a.assignee!==member.name))return false;
+  if(member.role!=='admin'&&(!mayUseArea(member,a.area)||a.assignee!==member.name))return false;
   if(a.type==='createTask')return a.title.trim().length>=2&&a.recordId==='';
   const i=items.find(i=>i.id===a.recordId);
   return !!i&&i.kind==='task'&&!i.data.deletedAt&&!['Concluído','Cancelado'].includes(i.data.status)&&maySee(i,member)&&a.title.trim().length>=2;

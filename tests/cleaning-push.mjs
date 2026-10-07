@@ -7,9 +7,9 @@ mkdirSync('.runtime-tests',{recursive:true});
 const runtime=`export const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_SECRET_KEY:'test-secret',SUPABASE_PUBLISHABLE_KEY:'test-public'};export async function cookies(){return {get:()=>({value:'session'})}};`;
 await build({stdin:{contents:`export * as cleaning from './app/api/cleaning/route';export * as pushApi from './app/api/push/route';export * from './lib/push';export * from './lib/cleaning';export * from './lib/model';`,resolveDir:process.cwd()},bundle:true,platform:'node',format:'cjs',outfile:'.runtime-tests/cleaning-push.cjs',plugins:[{name:'runtime',setup(b){b.onResolve({filter:/^(cloudflare:workers|next\/headers)$/},()=>({path:'runtime',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:runtime,loader:'js'}));}}]});
 const app=require('../.runtime-tests/cleaning-push.cjs');
-const admin={email:'owner@test.pt',name:'Ana',role:'admin'},employee={email:'cleaner@test.pt',name:'Maria',role:'employee'};let person=admin,providerStatus=201,requests=0,rpcTasks,authed=true;
+const admin={email:'owner@test.pt',name:'Ana',role:'admin'},employee={email:'cleaner@test.pt',name:'Maria',role:'employee',allowed_areas:['Lavandaria','Arroios de Paixão — Quarto'],active:true};let person=admin,providerStatus=201,requests=0,rpcTasks,authed=true;
 const stay={id:'stay-test',kind:'stay',version:1,created_by:admin.email,updated_at:new Date().toISOString(),data:app.recordSchema.parse({title:'Guest private name',area:app.ARROIOS,due:'2026-10-20',checkout:'2026-10-22',contact:'private@example.test'})};
-const db={members:[admin,employee],records:[stay],push_config:[],push_subscriptions:[],push_deliveries:[]};
+const db={members:[admin,employee],records:[stay],push_config:[],push_subscriptions:[],push_deliveries:[],family_events:[]};
 const json=(x,status=200)=>Response.json(x,{status});
 globalThis.fetch=async(url,opt={})=>{
  const u=new URL(url);if(u.hostname==='web.push.apple.com'){requests++;assert.equal(opt.redirect,'manual');assert(new Headers(opt.headers).get('authorization').startsWith('vapid '));assert(!Buffer.from(opt.body).toString().includes('Casa em Dia'));return new Response('',{status:providerStatus});}
@@ -42,6 +42,10 @@ const task=(id,data)=>({id,kind:'task',data:app.recordSchema.parse({title:'Task 
 const cases=[task('today',{due:'2026-10-20',snoozeUntil:'2026-11-01'}),task('past',{due:'2026-10-19',snoozeUntil:'2026-11-01'}),task('done',{due:'2026-10-20',status:'Concluído'}),task('approval',{status:'Por aprovar'}),task('waiting',{status:'À espera',reviewOn:'2026-10-20'}),task('other',{due:'2026-10-20',assignee:'Ana'})];
 assert.equal(app.reminderCount(cases,employee,'2026-10-20'),3);assert.equal(app.reminderCount(cases,admin,'2026-10-20'),4);
 db.records.push(...cases);assert.equal((await app.scheduledSummary(new Date('2026-10-20T07:15:00Z'))).sent,1);assert.equal((await app.scheduledSummary(new Date('2026-10-20T07:30:00Z'))).sent,0);assert.equal(requests,2);
+// Timed family reminders are sent only to the named parent, once per occurrence.
+const otherParent={email:'other@test.pt',name:'Afonso',role:'admin',active:true};db.members.push(otherParent);admin.active=true;
+db.family_events.push({id:'lesson',version:1,data:{title:'Private lesson',child:'Private child',category:'Explicações',date:'2026-10-20',time:'10:00',endTime:'11:00',responsible:'Ana',pickupBy:'Afonso',travelMinutes:15,pickupTravelMinutes:15,bufferMinutes:5,remindMinutes:15,repeat:'once',weekdays:[],until:'',excludedDates:[],cancelled:false}});
+const beforeFamily=requests;assert.equal((await app.scheduledFamily(new Date('2026-10-20T08:25:00Z'))).sent,1);assert.equal(requests,beforeFamily+1);assert.equal((await app.scheduledFamily(new Date('2026-10-20T08:30:00Z'))).sent,0);assert.equal((await app.scheduledFamily(new Date('2026-10-20T09:25:00Z'))).sent,0);admin.active=false;db.family_events[0].data.time='12:00';assert.equal((await app.scheduledFamily(new Date('2026-10-20T10:25:00Z'))).sent,0);admin.active=true;
 providerStatus=410;assert.equal(await app.deliverPush(db.push_subscriptions[0],'test-expired','Test'), 'failed');assert.equal(db.push_subscriptions[0].enabled,false);
 authed=false;assert.equal((await app.pushApi.GET()).status,401);
 console.log('PASS: cleaning permissions and private drafts; encrypted push, endpoint restrictions, user-scoped subscription/test, duplicate suppression, expiration, Lisbon DST and snooze/visibility. Provider transport simulated.');
