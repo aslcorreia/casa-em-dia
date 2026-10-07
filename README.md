@@ -99,3 +99,9 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e noti
 - Repetição Diária disponível nos dois formulários e aceite pela API; cria a ocorrência seguinte ao concluir, com passos por fazer e mantendo responsável e hora. A data parte da ocorrência anterior, tal como na repetição semanal. Um atraso não apaga obrigações pendentes.
 - Filtros seguem o manual, eventualmente após cada carga; a verificação diária e o cotão semanal não substituem essa frequência. Máquinas/modelos por confirmar; trabalhos internos, deslocações e acesso difícil são reservados a pessoal habilitado. Fontes, limites das avaliações e decisões em `docs/lavandaria-fontes.md`.
 - Não se alteraram registos reais nem se criaram tarefas com datas/responsáveis presumidos. O utilizador escolhe a primeira data e guarda cada rotina.
+
+## Limpeza da casa
+
+- O espaço Casa passou a Limpeza da casa em 7 de outubro de 2026, por pedido da proprietária. O nome da aplicação continua Casa em Dia.
+- A normalização aceita Casa em registos, contactos e propostas anteriores. Modelos, filtros, cartões e formulários usam o novo nome.
+- `scripts/rename-home-cleaning.sql` atualiza `area` e `serviceAreas`, conserva os restantes campos, incrementa a versão e regista a alteração no histórico. Aplicar depois da publicação do código compatível.
