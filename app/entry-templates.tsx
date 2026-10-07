@@ -1,0 +1,18 @@
+'use client';
+import {useState} from 'react';
+import {Plus,Search,ChevronRight,CheckCheck,Camera,ShoppingBag,House,BriefcaseBusiness,LayoutTemplate} from 'lucide-react';
+import {areas,Item} from '@/lib/model';
+import {EntryTemplate,entryKinds,templatesFor} from '@/lib/entry-templates';
+const icons={task:CheckCheck,incident:Camera,purchase:ShoppingBag,stay:House,supplier:BriefcaseBusiness};
+type Props={area:string;kind:Item['kind']|'all';admin:boolean;onChoose:(t:EntryTemplate,area:string)=>void};
+function TemplateCard({template,onChoose}:{template:EntryTemplate;onChoose:()=>void}){const Icon=icons[template.kind];return <button className="entry-template" onClick={onChoose}><span className="template-kind"><Icon size={17}/>{entryKinds[template.kind]}{template.routine?' · Rotina':''}</span><strong>{template.label}</strong><small>{template.hint}</small><span className="template-action">Preparar<ChevronRight size={15}/></span></button>;}
+export function EntrySuggestions({area,kind,admin,onChoose,onAll}:Props&{onAll:()=>void}){
+ const templates=templatesFor(area,kind,admin).slice(0,3);
+ return <section className="entry-suggestions" aria-label="Modelos para começar"><div className="section-top"><h2>Começar com um modelo</h2><button className="textbutton" onClick={onAll}>Ver todos<ChevronRight size={16}/></button></div><div className="template-grid">{templates.map(t=><TemplateCard key={t.id} template={t} onChoose={()=>onChoose(t,area)}/>)}</div></section>;
+}
+export default function TemplateLibrary({area:initialArea,kind:initialKind,admin,onChoose,onBlank}:Props&{onBlank:(kind:Item['kind'],area:string)=>void}){
+ const [area,setArea]=useState(initialArea),[kind,setKind]=useState(initialKind),[query,setQuery]=useState('');
+ const search=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ const templates=templatesFor(area,kind,admin).filter(t=>(t.label+' '+t.hint+' '+t.scope).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(search));
+ return <section className="template-library"><div className="template-intro"><LayoutTemplate size={25}/><p>Escolhe um modelo, ajusta os passos e indica quem trata. Só fica no painel quando guardares.</p></div><div className="template-filters"><label className="field"><span>Espaço</span><select value={area} onChange={e=>setArea(e.target.value)}>{['Todas as áreas',...areas.filter(a=>admin||a!=='Família')].map(a=><option key={a}>{a}</option>)}</select></label><label className="field"><span>Tipo de assunto</span><select value={kind} onChange={e=>setKind(e.target.value as typeof kind)}><option value="all">Todos os tipos</option>{Object.entries(entryKinds).filter(([k])=>admin||['task','incident'].includes(k)).map(([k,label])=><option key={k} value={k}>{label}</option>)}</select></label><label className="search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: limpeza, roupa, hóspedes…" aria-label="Procurar modelos"/></label></div><div className="template-grid">{templates.map(t=><TemplateCard key={t.id} template={t} onChoose={()=>onChoose(t,area)}/>)}</div>{!templates.length&&<p className="quiet-empty">Não há modelos com estes filtros. Podes criar o teu assunto de raiz.</p>}<button className="secondary template-blank" onClick={()=>onBlank(kind==='all'?'task':kind,area)}><Plus size={17}/>Criar sem modelo</button></section>;
+}

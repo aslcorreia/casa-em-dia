@@ -62,3 +62,12 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e noti
 - O limite local de pedidos é cinco por minuto por utilizador, com um pedido em curso por instância. Não é um limite global de faturação. Cloudflare controla a quota; no plano Free existe uma franquia diária e os pedidos acima do limite são recusados. Num plano Paid pode haver cobrança acima da franquia. Não foi feita nenhuma mudança de plano.
 - GET /api/assistant/status informa apenas se existe ligação configurada; não faz inferência nem revela registos. Os restantes endpoints exigem sessão.
 - Testes simulam inferência, verificam filtragem por função, conversas separadas, propostas permitidas e falhas do fornecedor. A inferência real depende da disponibilidade e quota da conta Cloudflare.
+
+
+## Conta e modelos de entrada
+
+- `/login` abre a entrada por código de email; quando já há sessão, mostra a própria conta. O topo tem Entrar ou Conta, também no telemóvel. Todas as funções de utilizador podem terminar sessão.
+- Mais → Modelos e rotinas disponibiliza exemplos por espaço e tipo. Cada espaço e separador de registos apresenta atalhos; Nova tarefa também sugere modelos do espaço selecionado.
+- Os modelos vivem em `lib/entry-templates.ts`. Não criam registos de demonstração: abrem um rascunho editável que só é enviado ao guardar.
+- Rotinas de limpeza incluem passos que podem ser editados ou retirados, responsável e primeira data obrigatória quando recorrentes. A repetição semanal/mensal cria a próxima ocorrência ao concluir, a partir da data anterior; não é um agendamento de notificações externas.
+- Registar a limpeza como tarefa não atualiza automaticamente o estado de limpeza de uma estadia. As reservas por plataforma são modelos de introdução manual; os contactos exigem o nome verdadeiro do prestador.
