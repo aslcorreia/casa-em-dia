@@ -14,7 +14,7 @@ export default function FocusDay({items,me,today,initial,refresh,open,create,rem
  const [ready,setReady]=useState(false),[planError,setPlanError]=useState(''),[busy,setBusy]=useState(false);
  const [choosing,setChoosing]=useState(false),[selection,setSelection]=useState<string[]>([]),[search,setSearch]=useState('');
  const [listArea,setListArea]=useState('Todos os espaços'),[listPerson,setListPerson]=useState('Toda a equipa');
- const [title,setTitle]=useState(''),[space,setSpace]=useState('Casa'),[kind,setKind]=useState('task');
+ const [title,setTitle]=useState(''),[space,setSpace]=useState('Limpeza da casa'),[kind,setKind]=useState('task');
  const [action,setAction]=useState<{item:Item;type:'wait'|'snooze'}|null>(null),[when,setWhen]=useState(''),[who,setWho]=useState('');
  const admin=me.role==='admin';
  const fetchPlan=async()=>{try{setPlan(await checked(await fetch('/api/day')));setReady(true);setPlanError('');}catch(e){setPlanError((e as Error).message);}};
