@@ -40,7 +40,7 @@ App publicada em https://casa-em-dia.as-lcorreia.workers.dev . A entrada por ema
 
 A migração leu a base Sites em 7 de outubro de 2026: nenhum registo de tarefas, estadias, histórico ou fotografias. Manteve a proprietária e preparou o acesso do marido no Supabase.
 
-Talkguest, WhatsApp, interpretação de fotografias, pesquisa autónoma e notificações fora da aplicação ainda não estão integrados. O resumo diário existente no ChatGPT foi atualizado em 7 de outubro de 2026 para consultar public.records da nova base Supabase, respeitando deletedAt. Este acompanhamento não é push da app. O Assistente organiza registos por regras e permite definir prazos, revisões e próximos passos; não tem um fornecedor de IA configurado.
+Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e notificações fora da aplicação ainda não estão integrados. O resumo diário existente no ChatGPT foi atualizado em 7 de outubro de 2026 para consultar public.records da nova base Supabase, respeitando deletedAt. Este acompanhamento não é push da app. O Assistente inclui uma conversa com IA da Cloudflare (Workers AI, Llama 3.3 70B), além do acompanhamento por regras. Permite criar propostas de tarefas e organizar pequenos passos; as propostas exigem revisão e guardar no formulário habitual.
 
 
 ## Tarefas, avisos e lixo
@@ -51,3 +51,14 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa autónoma e notifi
 - Registos apagados não aparecem em listas, prioridades ou avisos. POST não permite contornar o lixo.
 - O sino agrupa avisos por assunto; os dados atualizam-se após ações, ao regressar à janela e a cada minuto.
 - Um adiamento futuro suprime lembretes comuns. Não esconde um prazo real hoje nem informação em falta numa estadia com entrada nos próximos dois dias.
+
+
+## IA do Assistente
+
+- Ligação nativa Workers AI: `ai.binding=AI` em wrangler.jsonc, conservada no ficheiro de publicação gerado. Não usa uma chave externa de IA.
+- POST /api/assistant valida sessão e origem, lê apenas contexto autorizado, limita a seleção a 60 registos / 34.000 caracteres e valida a resposta JSON.
+- As propostas não escrevem em records: abrem o formulário para revisão. Propostas de atualização incluem a versão de origem para evitar aplicar uma sugestão a uma tarefa entretanto alterada. O modelo não pode apagar, concluir, aprovar, enviar mensagens nem contratar.
+- A conversa privada de cada utilizador guarda até 20 mensagens em settings, chave assistant:email. DELETE /api/assistant inicia uma nova conversa para o próprio utilizador.
+- O limite local de pedidos é cinco por minuto por utilizador, com um pedido em curso por instância. Não é um limite global de faturação. Cloudflare controla a quota; no plano Free existe uma franquia diária e os pedidos acima do limite são recusados. Num plano Paid pode haver cobrança acima da franquia. Não foi feita nenhuma mudança de plano.
+- GET /api/assistant/status informa apenas se existe ligação configurada; não faz inferência nem revela registos. Os restantes endpoints exigem sessão.
+- Testes simulam inferência, verificam filtragem por função, conversas separadas, propostas permitidas e falhas do fornecedor. A inferência real depende da disponibilidade e quota da conta Cloudflare.

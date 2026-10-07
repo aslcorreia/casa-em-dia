@@ -8,5 +8,8 @@
   "vars": {
     "SUPABASE_URL": "https://qbqvmkvuzhsrrsyceafp.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_neY_M3cwpr_QKE3kWBkKUg_aw90NVWe"
+  },
+  "ai": {
+    "binding": "AI"
   }
 }
