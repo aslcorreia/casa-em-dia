@@ -81,3 +81,13 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e noti
 - A cama individual anunciada fica como passo condicional, prevalecendo a cama de casal indicada pela proprietária. Cafeteira/chaleira/minibar e varanda são verificações apenas se presentes/em uso.
 - Os modelos são recomendações de procedimento, ajustáveis às etiquetas dos materiais e equipamentos. Não substituem reparações nem análise de pragas. O estado da limpeza da estadia continua a exigir atualização explícita.
 - Verificação: `node tests/arroios.mjs`, `node tests/supabase.mjs`, `node tests/dashboard.mjs`, typecheck e build.
+
+
+## Duplex e Alfama
+
+- Alojamento 2 é **Arroios de Paixão — Duplex**; Alojamento 3 é **Alfama de Paixão**. Os três nomes antigos são aceites e normalizados em registos, áreas dos contactos e propostas do Assistente.
+- Cada apartamento tem seis modelos específicos: quartos/roupa, cozinha/kitchenette, casa de banho, sala e circulação, detalhe e revisão final. `lib/apartment-cleaning.ts` contém os procedimentos; `lib/lodging-profiles.ts` descreve os espaços. São rascunhos sem data ou execução automática.
+- Galerias do Booking inspecionadas em 2026-10-07: https://www.booking.com/hotel/pt/arroios-de-paixao-duplex-lisboa.pt-pt.html e https://www.booking.com/hotel/pt/alfama-de-paixao-lisboa.html . As fotografias identificam equipamentos; não demonstram a sujidade atual.
+- Duplex: duas camas de casal, cozinha, sofá, cadeiras de corda, escadas/guardas de madeira, terraço, dois lavatórios, vidro de duche, sanita e bidé. Equipamentos que não foram identificados visualmente são condicionais nos passos.
+- Alfama: quarto, sofá-cama, kitchenette aberta, mesa recolhível, micro-ondas/exaustor, cabine de duche com vidro e perfis, lavatório, sanita e azulejos com juntas.
+- `scripts/rename-lodgings.sql` normaliza os três nomes na base de dados, preserva os restantes campos, incrementa a versão e regista auditoria. Executar após publicar o código compatível.
