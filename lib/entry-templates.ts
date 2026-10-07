@@ -2,9 +2,10 @@ import {ARROIOS,areas,lodgingAreas,isLodgingArea,normalizeArea,Data,Item} from '
 
 import {apartmentCleaningTemplates} from './apartment-cleaning';
 import {arroiosCleaningTemplates} from './arroios-cleaning';
+import {laundryTemplates} from './laundry-cleaning';
 
 type Scope=Data['area']|'Alojamentos'|'Todos';
-export type EntryTemplate={id:string;kind:Item['kind'];scope:Scope;label:string;hint:string;steps?:string[];routine?:boolean;excludeAreas?:readonly Data['area'][];recordTitle?:string;description?:string;category?:string;channel?:Data['channel']};
+export type EntryTemplate={id:string;kind:Item['kind'];scope:Scope;label:string;hint:string;steps?:string[];routine?:boolean;repeat?:Data['repeat'];excludeAreas?:readonly Data['area'][];recordTitle?:string;description?:string;category?:string;channel?:Data['channel']};
 export const entryKinds:Record<Item['kind'],string>={task:'Tarefa',incident:'Problema',purchase:'Compra',stay:'Estadia',supplier:'Contacto'};
 export const entryTemplates:EntryTemplate[]=[
  {id:'home-clean-base',kind:'task',scope:'Casa',label:'Limpeza da casa — rotina base',hint:'Casas de banho, cozinha, pó e chão.',routine:true,steps:['Arrumar as superfícies para limpar','Limpar as casas de banho','Limpar a cozinha e a bancada','Limpar o pó','Aspirar e lavar o chão','Esvaziar o lixo e anotar o que falta']},
@@ -23,12 +24,7 @@ export const entryTemplates:EntryTemplate[]=[
  {id:'quinta-outside',kind:'task',scope:'Quinta · Arruda',label:'Limpar e arrumar o exterior',hint:'Caminhos, folhas e ferramentas.',steps:['Definir a zona a tratar','Recolher folhas e resíduos','Arrumar ferramentas e materiais','Anotar o que precisa de manutenção']},
  {id:'quinta-work',kind:'task',scope:'Quinta · Arruda',label:'Planear um trabalho na quinta',hint:'Objetivo, material e quem executa.',steps:['Definir o resultado pretendido','Listar materiais e ferramentas','Confirmar quem executa e quando','Pedir orçamento se necessário']},
  {id:'quinta-material',kind:'purchase',scope:'Quinta · Arruda',label:'Material para a quinta',hint:'Medidas, quantidade e finalidade.',description:'Para que trabalho:\nMaterial e medidas:\nQuantidade:',category:'Horta e manutenção'},
- {id:'laundry-check',kind:'task',scope:'Lavandaria',label:'Verificar a lavandaria',hint:'Máquinas, pagamentos, limpeza e consumíveis.',steps:['Verificar se há erros visíveis nas máquinas','Verificar o sistema de pagamento','Verificar a limpeza do espaço','Verificar o nível dos consumíveis','Registar avarias ou material em falta']},
- {id:'laundry-clean',kind:'task',scope:'Lavandaria',label:'Limpar a lavandaria',hint:'Bancadas, máquinas, filtros e chão.',steps:['Limpar bancadas e superfícies exteriores','Limpar os filtros de acordo com o procedimento do equipamento','Limpar portas e vidros','Esvaziar o lixo','Aspirar e lavar o chão','Anotar material em falta']},
- {id:'laundry-stock',kind:'task',scope:'Lavandaria',label:'Repor consumíveis',hint:'Confirmar o stock e repor os produtos.',steps:['Verificar os produtos e quantidades em stock','Repor conforme o procedimento do equipamento','Registar o que precisa de ser encomendado']},
- {id:'laundry-service',kind:'task',scope:'Lavandaria',label:'Marcar assistência a uma máquina',hint:'Máquina, erro, técnico e visita.',steps:['Identificar a máquina e o problema','Juntar a fotografia ou código de erro','Contactar o técnico','Registar a data e o orçamento']},
- {id:'laundry-fault',kind:'incident',scope:'Lavandaria',label:'Máquina ou secador com problema',hint:'Identificar o equipamento e juntar fotografia.',description:'Equipamento / número:\nO que aconteceu:\nCódigo de erro (se existir):',steps:['Registar o problema e a fotografia','Definir o próximo passo com o responsável']},
- {id:'laundry-buy',kind:'purchase',scope:'Lavandaria',label:'Detergente e consumíveis',hint:'Produto, quantidade e stock disponível.',description:'Produto:\nQuantidade necessária:\nStock atual:',category:'Consumíveis da lavandaria'},
+ ...laundryTemplates,
  ...arroiosCleaningTemplates,
  ...apartmentCleaningTemplates,
  {id:'al-turnover',kind:'task',scope:'Alojamentos',excludeAreas:[ARROIOS],label:'Limpeza entre hóspedes',hint:'Uma lista para deixar a casa pronta.',steps:['Confirmar a saída e a hora da próxima entrada','Recolher lixo e roupa usada','Verificar e fotografar danos ou faltas','Limpar cozinha e casas de banho','Limpar superfícies e chão','Fazer as camas e colocar toalhas','Repor os consumíveis combinados','Verificar a casa e confirmar que está pronta'],description:'Referência da estadia:\nHora limite para a casa ficar pronta:'},
@@ -61,5 +57,5 @@ export function templateArea(t:EntryTemplate,selected:string):Data['area']{
 }
 export function templateDraft(t:EntryTemplate,base:Data,selected:string):Data{
  const steps=(t.steps||[]).map(title=>({id:crypto.randomUUID(),title,done:false}));
- return {...base,title:t.recordTitle??t.label,area:templateArea(t,selected),description:t.description||'',steps,nextStep:steps[0]?.title||'',repeat:t.routine?'Semanal':'Não repetir',category:t.category||'',channel:t.channel||'Manual',quotes:[],due:'',time:'',checkout:'',guestsConfirmed:false,arrivalConfirmed:false,cleaning:'Por marcar'};
+ return {...base,title:t.recordTitle??t.label,area:templateArea(t,selected),description:t.description||'',steps,nextStep:steps[0]?.title||'',repeat:t.repeat??(t.routine?'Semanal':'Não repetir'),category:t.category||'',channel:t.channel||'Manual',quotes:[],due:'',time:'',checkout:'',guestsConfirmed:false,arrivalConfirmed:false,cleaning:'Por marcar'};
 }

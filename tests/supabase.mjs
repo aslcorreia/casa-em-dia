@@ -98,5 +98,25 @@ for(const area of [renamed,'Arroios de Paixão — Duplex','Alfama de Paixão','
 assert.equal((await app.records.POST(req({kind:'stay',data:{title:'Área inválida',area:'Casa',due:'2026-10-09',checkout:'2026-10-11'}}))).status,400);
 assert(!tables.records.filter(i=>i.kind==='stay').some(i=>i.data.area.startsWith('Alojamento')));
 console.log('PASS: legacy contacts retain associations; renamed and existing lodgings accept stays; old clients normalize to the new name.');
+// Daily laundry recurrence crosses month/year/DST calendar boundaries, resets steps,
+// and creates only one successor when the completed record is saved again.
+assert.equal((await app.records.POST(req({kind:'task',data:{title:'Rotina diária sem data',area:'Lavandaria',repeat:'Diária'}}))).status,400);
+for(const [due,nextDue] of [['2026-10-24','2026-10-25'],['2026-10-31','2026-11-01'],['2026-12-31','2027-01-01']]){
+ const title='Limpeza diária '+due;
+ const created=await app.records.POST(req({kind:'task',data:{title,area:'Lavandaria',assignee:'Maria',due,time:'08:00',repeat:'Diária',steps:[{id:'s1',title:'Limpar a bancada',done:false}]}}));
+ assert.equal(created.status,200);
+ const {id}=await created.json();
+ const first=(await (await get()).json()).items.find(i=>i.id===id);
+ assert.equal((await app.records.POST(req({...first,data:{...first.data,status:'Concluído',steps:first.data.steps.map(s=>({...s,done:true}))}}))).status,200);
+ const occurrences=tables.records.filter(i=>i.data.title===title);
+ assert.equal(occurrences.length,2);
+ const next=occurrences.find(i=>i.id!==id);
+ assert.equal(next.data.due,nextDue);assert.equal(next.data.assignee,'Maria');assert.equal(next.data.time,'08:00');
+ assert.equal(next.data.status,'Por fazer');assert.equal(next.data.completedAt,'');assert.equal(next.data.steps[0].done,false);
+ const completed=(await (await get()).json()).items.find(i=>i.id===id);
+ assert.equal((await app.records.POST(req(completed))).status,200);
+ assert.equal(tables.records.filter(i=>i.data.title===title).length,2);
+}
+console.log('PASS: daily recurrence, date required, month/year/DST boundaries, assignee/time retained, steps reset, no duplicate on re-save.');
 app.jar.clear();assert.equal((await get()).status,401);
 console.log('PASS: email authorization, invalid OTP, verified cookie session, CRUD, concurrent-version conflict, recurrence, employee permissions, private focus and cross-origin rejection. Versioned trash, recovery, history retention and deletion permissions passed. Supabase transport simulated.');

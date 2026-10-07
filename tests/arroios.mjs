@@ -42,4 +42,4 @@ for(const area of [DUPLEX,ALFAMA]){
 }
 const proposal=proposalData({type:'createTask',title:'Tarefa antiga',area:'Alojamento 1',assignee:base.assignee,due:'',nextStep:'',steps:[]});
 assert.equal(proposal.area,ARROIOS);
-console.log('PASS: renamed area and legacy associations; 56 valid templates; property-specific scope; 4/6/6 visible cleaning shortcuts; old AI proposals remain usable.');
+console.log('PASS: renamed area and legacy associations; '+entryTemplates.length+' valid templates; property-specific scope; 4/6/6 visible cleaning shortcuts; old AI proposals remain usable.');
