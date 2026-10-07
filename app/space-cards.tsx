@@ -1,9 +1,9 @@
 'use client';
 import {Users,House,Leaf,WashingMachine,Plus,ChevronRight} from 'lucide-react';
 import {areas,Item,isOpen} from '@/lib/model';
-export default function SpaceCards({items,admin,today,onOpen,onAdd}:{items:Item[];admin:boolean;today:string;onOpen:(area:string)=>void;onAdd:(area:string)=>void}){
+export default function SpaceCards({items,admin,today,onOpen,onAdd,allowedAreas=areas}:{items:Item[];admin:boolean;allowedAreas?:readonly string[];today:string;onOpen:(area:string)=>void;onAdd:(area:string)=>void}){
  const active=items.filter(isOpen);
- return <section className="spaces-section" aria-label="Os teus espaços"><div className="section-top"><h2>Os teus espaços</h2><span className="muted">Abre um espaço ou acrescenta uma tarefa</span></div><div className="space-cards">{areas.filter(a=>admin||a!=='Família').map(area=>{
+ return <section className="spaces-section" aria-label="Os teus espaços"><div className="section-top"><h2>Os teus espaços</h2><span className="muted">Abre um espaço ou acrescenta uma tarefa</span></div><div className="space-cards">{areas.filter(a=>allowedAreas.includes(a)&&(admin||a!=='Família')).map(area=>{
   const n=areas.indexOf(area);
   const records=active.filter(i=>i.data.area===area),urgent=records.filter(i=>i.data.due&&i.data.due<=today).length;
   const next=[...records].sort((a,b)=>(a.data.due||'9999').localeCompare(b.data.due||'9999')||b.updated_at.localeCompare(a.updated_at))[0];

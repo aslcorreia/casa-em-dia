@@ -1,7 +1,8 @@
 import webpush from 'web-push';
 import {z} from 'zod';
 import {rest} from './backend';
-import {Item,maySee,notices,recordSchema} from './model';
+import {Item,maySee,notices,recordSchema,Member} from './model';
+import {FamilyEvent,dueFamilyReminders,departureClock} from './family';
 
 export function allowedEndpoint(value:string){
  try{const u=new URL(value),h=u.hostname;return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&!u.hash&&
@@ -16,15 +17,15 @@ export async function pushConfig(){
 }
 export function lisbonDate(now:Date){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);}
 export function isSummaryHour(now:Date){return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Lisbon',hour:'2-digit',hourCycle:'h23'}).format(now)==='08';}
-export function reminderCount(items:Item[],person:{name:string;email:string;role:string},today:string){return new Set(notices(items.filter(i=>maySee(i,person)),today).map(n=>n.id)).size;}
-export async function deliverPush(row:{id:string;subscription:Subscription},eventKey:string,body:string){
+export function reminderCount(items:Item[],person:Member,today:string){return new Set(notices(items.filter(i=>maySee(i,person)),today).map(n=>n.id)).size;}
+export async function deliverPush(row:{id:string;subscription:Subscription},eventKey:string,body:string,options:{url?:string;ttl?:number;tag?:string}={}){
  const claimed=await rest('rpc/ced_claim_push','POST','',{p_id:row.id,p_event:eventKey}) as unknown as boolean;
  if(!claimed)return 'already';
  const query='?subscription_id=eq.'+encodeURIComponent(row.id)+'&event_key=eq.'+encodeURIComponent(eventKey);
  try{
   const sub=subscriptionSchema.parse(row.subscription),keys=await pushConfig();
-  const req=webpush.generateRequestDetails(sub,JSON.stringify({title:'Casa em Dia',body,tag:eventKey.startsWith('test-')?'ced-test':'ced-daily',url:'/?view=notifications'}),{
-   TTL:3600,urgency:'normal',vapidDetails:{subject:'https://casa-em-dia.as-lcorreia.workers.dev',publicKey:keys.public_key,privateKey:keys.private_key}});
+  const req=webpush.generateRequestDetails(sub,JSON.stringify({title:'Casa em Dia',body,tag:options.tag||(eventKey.startsWith('test-')?'ced-test':'ced-daily'),url:options.url||'/?view=notifications'}),{
+   TTL:options.ttl??3600,urgency:options.ttl?'high':'normal',vapidDetails:{subject:'https://casa-em-dia.as-lcorreia.workers.dev',publicKey:keys.public_key,privateKey:keys.private_key}});
   const headers=new Headers(req.headers as Record<string,string>);headers.delete('Content-Length');
   const sent=await fetch(req.endpoint,{method:'POST',headers,body:req.body as BodyInit,redirect:'manual',signal:AbortSignal.timeout(12000)});
   if(sent.status===404||sent.status===410)await rest('push_subscriptions','PATCH','?id=eq.'+row.id,{enabled:false,updated_at:new Date().toISOString()});
@@ -41,7 +42,7 @@ export async function scheduledSummary(now=new Date()){
  const members=await rest('members');const items:Item[]=[];
  for(let offset=0;;offset+=500){const page=await rest('records','GET','?order=id&limit=500&offset='+offset);for(const row of page)items.push({...row,data:recordSchema.parse(row.data)});if(page.length<500)break;}
  let sent=0,failed=0;
- for(const sub of subscriptions){const m=members.find(m=>m.email===sub.member_email);if(!m)continue;
+ for(const sub of subscriptions){const m=members.find(m=>m.email===sub.member_email);if(!m||m.active===false)continue;
   const count=reminderCount(items,m,today);if(!count)continue;
   const result=await deliverPush(sub,'daily-'+today,count===1?'Tens um assunto a rever hoje. Abre a app para ver o próximo passo.':'Tens '+count+' assuntos a rever hoje. Abre a app para escolher o próximo passo.');
   if(result==='sent')sent++;if(result==='failed')failed++;
@@ -49,4 +50,17 @@ export async function scheduledSummary(now=new Date()){
  await rest('push_deliveries','DELETE','?attempted_at=lt.'+encodeURIComponent(new Date(now.getTime()-30*86400000).toISOString()));
  if(failed)throw new Error('Some push notifications failed; the next scheduled run will retry.');
  return {sent};
+}
+
+export async function scheduledFamily(now=new Date()){
+ const subscriptions=await rest('push_subscriptions','GET','?enabled=eq.true');if(!subscriptions.length)return {sent:0};
+ const members=await rest('members','GET','?role=eq.admin&active=eq.true');
+ const events:FamilyEvent[]=[];for(let offset=0;;offset+=200){const page=await rest('family_events','GET','?order=id&limit=200&offset='+offset);events.push(...page as FamilyEvent[]);if(page.length<200)break;}
+ let sent=0,failed=0;for(const leg of dueFamilyReminders(events,now)){
+  const person=members.find(m=>m.role==='admin'&&m.active!==false&&m.name===leg.person);if(!person)continue;
+  for(const sub of subscriptions.filter(s=>s.member_email===person.email)){
+   const result=await deliverPush(sub,'family-'+leg.key,'Agenda familiar: sair às '+departureClock(leg.departure)+'. Abre a app para ver o compromisso.',{url:'/?view=family',tag:'family-'+leg.key,ttl:300});if(result==='sent')sent++;if(result==='failed')failed++;
+  }
+ }
+ if(failed)throw new Error('Family reminders will retry while still useful.');return {sent};
 }

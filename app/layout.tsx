@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Invitation from "./invitation";
 
 export const metadata: Metadata = {
   title: "Casa em Dia",
@@ -20,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><Invitation/>{children}</body>
     </html>
   );
 }

@@ -5,7 +5,7 @@ const row=(r:any)=>r?.data&&typeof r.data==='object'?{...r,data:JSON.stringify(r
 export function database(){return {prepare(sql:string){return statement(sql);},async batch(statements:any[]){const out=[];for(const s of statements)out.push(await s.run());return out;}};}
 function statement(sql:string){let args:any[]=[];const q=sql.replace(/\s+/g,' ').trim();async function execute(){const a=args;
 if(q==='SELECT * FROM members WHERE email=?')return rest('members','GET','?email=eq.'+eq(a[0]));
-if(q==='SELECT name,email,role FROM members')return rest('members','GET','?select=name,email,role');
+if(q==='SELECT name,email,role FROM members')return rest('members','GET','?select=name,email,role,allowed_areas,active,invite_status,invited_at');
 if(q==='SELECT email FROM members WHERE lower(name)=lower(?) AND email<>?')return (await rest('members')).filter((m:any)=>m.name.toLowerCase()===String(a[0]).toLowerCase()&&m.email!==a[1]);
 if(q.startsWith('INSERT INTO members(email,name,role)'))return rest('members','POST','?on_conflict=email',{email:a[0],name:a[1],role:a[2]});
 if(q==="SELECT value FROM settings WHERE key='owner'")return rest('settings','GET','?key=eq.owner');
