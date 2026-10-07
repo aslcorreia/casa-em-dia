@@ -19,6 +19,7 @@ assert.equal((await app.verify.POST(req({email:identity,code:'bad'}))).status,40
 assert.equal((await app.verify.POST(req({email:identity,code:'123456'}))).status,200);
 assert.equal(app.jar.get('ced-access'),'valid');
 assert.equal((await get()).status,200);
+assert.equal((await app.records.POST(req({kind:'task',data:{title:'Rotina sem data',area:'Casa',repeat:'Semanal'}}))).status,400);
 assert.equal((await app.records.POST(req({kind:'task',data:{title:'Limpar casa',area:'Casa',assignee:'Maria',due:'2026-10-07',repeat:'Semanal'}}))).status,200);
 let item=(await (await get()).json()).items[0];
 assert.equal((await app.records.POST(req({...item,version:0}))).status,409);
