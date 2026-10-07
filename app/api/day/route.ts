@@ -1,0 +1,6 @@
+import {z} from 'zod';
+import {db,member,sameOrigin,fail,json} from '@/lib/server';
+import {maySee} from '@/lib/model';
+const schema=z.object({ids:z.array(z.string().max(100)).max(3),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)});
+export async function GET(){try{const m=await member();const row=await db().prepare('SELECT value FROM settings WHERE key=?').bind('day:'+m.email).first<any>();return json(row?JSON.parse(row.value):{ids:[],date:''});}catch(e){return fail(e);}}
+export async function POST(r:Request){try{sameOrigin(r);const m=await member();const p=schema.safeParse(await r.json());if(!p.success)return new Response('Escolhe até três prioridades.',{status:400});const ids=[...new Set(p.data.ids)];const d=db();for(const id of ids){const item=await d.prepare('SELECT * FROM records WHERE id=?').bind(id).first<any>();if(!item||item.kind==='supplier'||!maySee({...item,data:JSON.parse(item.data)},m))return new Response('Assunto indisponível.',{status:403});}const value={date:p.data.date,ids};await d.prepare('INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind('day:'+m.email,JSON.stringify(value)).run();return json(value);}catch(e){return fail(e);}}
