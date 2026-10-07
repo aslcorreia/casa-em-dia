@@ -1,12 +1,14 @@
 'use client';
+import AssistantChat from './assistant-chat';
+import {Proposal} from '@/lib/assistant-ai';
 import {useState} from 'react';
 import {ArrowRight,CheckCheck,Clock,Copy,Search,Sparkles} from 'lucide-react';
 import {toast} from 'sonner';
 import {Item,Data,assistantItems,possibleDuplicates,notices} from '@/lib/model';
 
-type Props={items:Item[];today:string;me:{name:string;role:string};busy:boolean;open:(item:Item)=>void;update:(item:Item,patch:Partial<Data>)=>Promise<boolean>};
+type Props={items:Item[];today:string;me:{name:string;role:string};busy:boolean;open:(item:Item)=>void;update:(item:Item,patch:Partial<Data>)=>Promise<boolean>;onProposal:(proposal:Proposal)=>void};
 const format=(value:string)=>new Date(value+'T12:00:00').toLocaleDateString('pt-PT',{day:'numeric',month:'short'});
-export default function Assistant({items,today,me,busy,open,update}:Props){
+export default function Assistant({items,today,me,busy,open,update,onProposal}:Props){
  const [tab,setTab]=useState('mine');
  const active=assistantItems(items,today),alerts=notices(items,today),duplicates=possibleDuplicates(active);
  const mine=active.filter(i=>i.data.status!=='À espera'&&(i.data.assignee===me.name||i.data.assignee==='Por atribuir'));
@@ -14,7 +16,8 @@ export default function Assistant({items,today,me,busy,open,update}:Props){
  const tomorrow=new Date(new Date(today+'T12:00:00Z').getTime()+86400000).toISOString().slice(0,10);
  const copyGuest=async(i:Item)=>{const d=i.data;const message=`Olá! Para prepararmos a sua estadia, ${!d.guestsConfirmed?'pode confirmar o total de adultos, crianças e bebés? ':''}${!d.arrivalConfirmed?'Qual é a hora prevista de chegada? ':''}Se tiver algum pedido especial, diga-nos, por favor. Obrigada!`;try{await navigator.clipboard.writeText(message);toast.success('Mensagem copiada. Revê antes de enviar.');}catch{toast.error('Não foi possível copiar. Abre os detalhes da estadia.');}};
  return <div className="assistant-view">
-  <section className="assistant-intro"><span className="assistant-icon"><Sparkles size={24}/></span><div><h2>Vamos dar o próximo passo.</h2><p>Organizo os teus registos por prazo, responsável e informação em falta. Também incluo tarefas sem data.</p><small>Organizador por regras · IA para conversar e pesquisar ainda por ligar.</small></div></section>
+  <AssistantChat onProposal={onProposal}/>
+  <section className="assistant-intro"><span className="assistant-icon"><Sparkles size={24}/></span><div><h2>Vamos dar o próximo passo.</h2><p>Organizo os teus registos por prazo, responsável e informação em falta. Também incluo tarefas sem data.</p><small>O acompanhamento abaixo identifica prazos e revisões automaticamente.</small></div></section>
   <div className="assistant-tabs" role="group" aria-label="Quem pode avançar"><button aria-pressed={tab==='mine'} onClick={()=>setTab('mine')}>Posso avançar <span>{mine.length}</span></button><button aria-pressed={tab==='team'} onClick={()=>setTab('team')}>Com a equipa / à espera <span>{team.length}</span></button></div>
   {!active.length?<div className="panel empty"><CheckCheck size={32}/><h3>Sem próximos passos para já</h3><p>As tarefas adiadas continuam em Tarefas. Voltam aqui na data escolhida, ou antes se houver um prazo hoje ou uma chegada próxima.</p></div>:!shown.length?<div className="panel quiet-empty">{tab==='mine'?'Os assuntos em aberto estão com a equipa. Podes acompanhá-los no separador ao lado.':'Não há assuntos com a equipa ou à espera.'}</div>:<>
    <p className="assistant-caption">{tab==='mine'?'Começa por um destes assuntos.':'Acompanha quem está a tratar de cada assunto.'} Primeiro aparecem os que precisam de atenção.</p>
