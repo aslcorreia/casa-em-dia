@@ -71,3 +71,13 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e noti
 - Os modelos vivem em `lib/entry-templates.ts`. Não criam registos de demonstração: abrem um rascunho editável que só é enviado ao guardar.
 - Rotinas de limpeza incluem passos que podem ser editados ou retirados, responsável e primeira data obrigatória quando recorrentes. A repetição semanal/mensal cria a próxima ocorrência ao concluir, a partir da data anterior; não é um agendamento de notificações externas.
 - Registar a limpeza como tarefa não atualiza automaticamente o estado de limpeza de uma estadia. As reservas por plataforma são modelos de introdução manual; os contactos exigem o nome verdadeiro do prestador.
+
+
+## Arroios de Paixão — Quarto
+
+- Alojamento 1 passou a Arroios de Paixão — Quarto. O esquema aceita o nome antigo em registos e pedidos já abertos, normalizando a área e serviceAreas. A classificação de alojamento usa uma lista explícita, não o prefixo do nome.
+- Quatro modelos próprios em `lib/arroios-cleaning.ts`: quarto/cama de casal, casa de banho, limpeza de detalhe e revisão antes da chegada. Aparecem primeiro no espaço e não criam tarefas sem guardar. Sem recorrência, responsável de limpeza ou data inventados.
+- Inventário visual consultado em 2026-10-07: galeria pública de https://www.booking.com/hotel/pt/arroios-de-paixao.pt-pt.html . Observados cama de casal, cabeceira, prateleiras abertas, mesas e candeeiros, cortinas, tapete, soalho, TV, mesa com loiça, banheira, estante de ripas, sanita, lavatório, espelho e janela. As fotos não permitem avaliar a limpeza atual.
+- A cama individual anunciada fica como passo condicional, prevalecendo a cama de casal indicada pela proprietária. Cafeteira/chaleira/minibar e varanda são verificações apenas se presentes/em uso.
+- Os modelos são recomendações de procedimento, ajustáveis às etiquetas dos materiais e equipamentos. Não substituem reparações nem análise de pragas. O estado da limpeza da estadia continua a exigir atualização explícita.
+- Verificação: `node tests/arroios.mjs`, `node tests/supabase.mjs`, `node tests/dashboard.mjs`, typecheck e build.

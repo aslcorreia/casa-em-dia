@@ -1,11 +1,11 @@
 import {z} from 'zod';
-import {areas,Item,Data,recordSchema,maySee,notices} from './model';
+import {areaSchema,areas,Item,Data,recordSchema,maySee,notices} from './model';
 
 export const AI_MODEL='@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const date=z.string().refine(s=>!s||/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(Date.parse(s+'T12:00:00Z'))&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s,'Data inválida');
 export const proposalSchema=z.object({
  version:z.number().int().positive().optional(),type:z.enum(['createTask','updateTask']),recordId:z.string().max(100),title:z.string().max(160),
- area:z.enum(areas),assignee:z.string().max(150),due:date,nextStep:z.string().max(300),steps:z.array(z.string().trim().min(1).max(200)).max(10)
+ area:areaSchema,assignee:z.string().max(150),due:date,nextStep:z.string().max(300),steps:z.array(z.string().trim().min(1).max(200)).max(10)
 });
 export type Proposal=z.infer<typeof proposalSchema>;
 export const replySchema=z.object({answer:z.string().trim().min(1).max(6000),actions:z.array(proposalSchema).max(3)});
@@ -35,7 +35,7 @@ export function validateProposals(actions:Proposal[],items:Item[],member:{name:s
 
 export function proposalData(a:Proposal,item?:Item):Data{
  const base=item?.data||recordSchema.parse({title:a.title,area:a.area,assignee:a.assignee});
- return {...base,title:a.title,area:a.area,assignee:a.assignee,due:a.due,nextStep:a.nextStep,steps:a.steps.length?[...a.steps.map(title=>{const previous=base.steps.find(s=>s.title===title);return previous||{id:crypto.randomUUID(),title,done:false};}),...base.steps.filter(s=>s.done&&!a.steps.includes(s.title))].slice(0,30):base.steps};
+ return {...base,title:a.title,area:areaSchema.parse(a.area),assignee:a.assignee,due:a.due,nextStep:a.nextStep,steps:a.steps.length?[...a.steps.map(title=>{const previous=base.steps.find(s=>s.title===title);return previous||{id:crypto.randomUUID(),title,done:false};}),...base.steps.filter(s=>s.done&&!a.steps.includes(s.title))].slice(0,30):base.steps};
 }
 
 export const SYSTEM_PROMPT=`És o Assistente da app Casa em Dia. Escreve português de Portugal, com linguagem simples e calorosa. Ajuda uma família com três filhos, um cão e um gato, casa, quinta em Arruda dos Vinhos, lavandaria self-service e três alojamentos locais. Facilita a concentração: máximo três prioridades e passos pequenos. Distingue o que depende do utilizador do que está à espera da equipa.

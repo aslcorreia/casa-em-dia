@@ -1,14 +1,15 @@
 'use client';
 import {useState} from 'react';
 import {Plus,Search,ChevronRight,CheckCheck,Camera,ShoppingBag,House,BriefcaseBusiness,LayoutTemplate} from 'lucide-react';
-import {areas,Item} from '@/lib/model';
+import {ARROIOS,areas,Item} from '@/lib/model';
 import {EntryTemplate,entryKinds,templatesFor} from '@/lib/entry-templates';
 const icons={task:CheckCheck,incident:Camera,purchase:ShoppingBag,stay:House,supplier:BriefcaseBusiness};
 type Props={area:string;kind:Item['kind']|'all';admin:boolean;onChoose:(t:EntryTemplate,area:string)=>void};
 function TemplateCard({template,onChoose}:{template:EntryTemplate;onChoose:()=>void}){const Icon=icons[template.kind];return <button className="entry-template" onClick={onChoose}><span className="template-kind"><Icon size={17}/>{entryKinds[template.kind]}{template.routine?' · Rotina':''}</span><strong>{template.label}</strong><small>{template.hint}</small><span className="template-action">Preparar<ChevronRight size={15}/></span></button>;}
 export function EntrySuggestions({area,kind,admin,onChoose,onAll}:Props&{onAll:()=>void}){
- const templates=templatesFor(area,kind,admin).slice(0,3);
- return <section className="entry-suggestions" aria-label="Modelos para começar"><div className="section-top"><h2>Começar com um modelo</h2><button className="textbutton" onClick={onAll}>Ver todos<ChevronRight size={16}/></button></div><div className="template-grid">{templates.map(t=><TemplateCard key={t.id} template={t} onChoose={()=>onChoose(t,area)}/>)}</div></section>;
+ const cleaning=area===ARROIOS&&(kind==='all'||kind==='task');
+ const templates=templatesFor(area,kind,admin).slice(0,cleaning?4:3);
+ return <section className="entry-suggestions" aria-label="Modelos para começar"><div className="section-top"><h2>{cleaning?'Rotinas de limpeza':'Começar com um modelo'}</h2><button className="textbutton" onClick={onAll}>Ver todos<ChevronRight size={16}/></button></div>{cleaning&&<div className="cleaning-intro"><strong>Quarto · Cama de casal · Casa de banho</strong><p>Escolhe uma rotina, atribui a quem limpa e indica a data. Cada passo pode ser ajustado e marcado como feito.</p><small>Objetivo: roupa limpa e seca, sem cabelos, pó ou resíduos. A limpeza de detalhe complementa a preparação entre hóspedes.</small></div>}<div className={cleaning?'template-grid cleaning-grid':'template-grid'}>{templates.map(t=><TemplateCard key={t.id} template={t} onChoose={()=>onChoose(t,area)}/>)}</div></section>;
 }
 export default function TemplateLibrary({area:initialArea,kind:initialKind,admin,onChoose,onBlank}:Props&{onBlank:(kind:Item['kind'],area:string)=>void}){
  const [area,setArea]=useState(initialArea),[kind,setKind]=useState(initialKind),[query,setQuery]=useState('');
