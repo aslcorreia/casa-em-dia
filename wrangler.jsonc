@@ -1,6 +1,6 @@
 {
   "name": "casa-em-dia",
-  "main": "vinext/server/fetch-handler",
+  "main": "./worker.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": [
     "nodejs_compat"
@@ -9,6 +9,7 @@
     "SUPABASE_URL": "https://qbqvmkvuzhsrrsyceafp.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_neY_M3cwpr_QKE3kWBkKUg_aw90NVWe"
   },
+  "triggers": {"crons": ["*/15 * * * *"]},
   "ai": {
     "binding": "AI"
   }
