@@ -1,8 +1,7 @@
-import {env} from 'cloudflare:workers';
 import {cookies} from 'next/headers';
 import {database} from './supabase-database';
-export function config(){const e=env as unknown as Record<string,string>;if(!e.SUPABASE_URL||!e.SUPABASE_PUBLISHABLE_KEY||!e.SUPABASE_SECRET_KEY)throw new Response('A configuração da aplicação ainda não está completa.',{status:503});return e;}
-export async function rest(table:string,method='GET',query='',body?:unknown):Promise<any[]>{const e=config();const r=await fetch(e.SUPABASE_URL+'/rest/v1/'+table+query,{method,headers:{apikey:e.SUPABASE_SECRET_KEY,Authorization:'Bearer '+e.SUPABASE_SECRET_KEY,'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates'},body:body===undefined?undefined:JSON.stringify(body)});if(!r.ok)throw new Error('Database request failed: '+r.status);return r.status===204?[]:await r.json();}
+export {config,rest} from './backend';
+import {config} from './backend';
 export function db(){return database();}
 export async function authRequest(path:string,body:unknown){const e=config();return fetch(e.SUPABASE_URL+'/auth/v1/'+path,{method:'POST',headers:{apikey:e.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});}
 export async function setSession(s:any){const c=await cookies();const opts={httpOnly:true,secure:true,sameSite:'lax' as const,path:'/'};c.set('ced-access',s.access_token,{...opts,maxAge:s.expires_in||3600});c.set('ced-refresh',s.refresh_token,{...opts,maxAge:60*60*24*30});}
