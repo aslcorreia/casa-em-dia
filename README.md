@@ -69,7 +69,7 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e noti
 - `/login` abre a entrada por código de email; quando já há sessão, mostra a própria conta. O topo tem Entrar ou Conta, também no telemóvel. Todas as funções de utilizador podem terminar sessão.
 - Mais → Modelos e rotinas disponibiliza exemplos por espaço e tipo. Cada espaço e separador de registos apresenta atalhos; Nova tarefa também sugere modelos do espaço selecionado.
 - Os modelos vivem em `lib/entry-templates.ts`. Não criam registos de demonstração: abrem um rascunho editável que só é enviado ao guardar.
-- Rotinas de limpeza incluem passos que podem ser editados ou retirados, responsável e primeira data obrigatória quando recorrentes. A repetição semanal/mensal cria a próxima ocorrência ao concluir, a partir da data anterior; não é um agendamento de notificações externas.
+- Rotinas de limpeza incluem passos que podem ser editados ou retirados, responsável e primeira data obrigatória quando recorrentes. A repetição diária/semanal/mensal cria a próxima ocorrência ao concluir, a partir da data anterior; não é um agendamento de notificações externas.
 - Registar a limpeza como tarefa não atualiza automaticamente o estado de limpeza de uma estadia. As reservas por plataforma são modelos de introdução manual; os contactos exigem o nome verdadeiro do prestador.
 
 
@@ -91,3 +91,11 @@ Talkguest, WhatsApp, interpretação de fotografias, pesquisa na Internet e noti
 - Duplex: duas camas de casal, cozinha, sofá, cadeiras de corda, escadas/guardas de madeira, terraço, dois lavatórios, vidro de duche, sanita e bidé. Equipamentos que não foram identificados visualmente são condicionais nos passos.
 - Alfama: quarto, sofá-cama, kitchenette aberta, mesa recolhível, micro-ondas/exaustor, cabine de duche com vidro e perfis, lavatório, sanita e azulejos com juntas.
 - `scripts/rename-lodgings.sql` normaliza os três nomes na base de dados, preserva os restantes campos, incrementa a versão e regista auditoria. Executar após publicar o código compatível.
+
+## Lavadeira do Bairro
+
+- Lavandaria → Limpeza e manutenção identifica a loja da Rua José Ricardo, 36. Apresenta sete rotinas por frequência: espaço, lavadoras, filtros/secadores e operação diariamente; cotão entre máquinas/topos e stock semanalmente; acompanhamento de manutenção mensalmente.
+- `lib/laundry-cleaning.ts` substitui os seis modelos genéricos por onze específicos. A biblioteca passa a 61 modelos. Inclui assistência, avarias, compras e pedidos/reclamações dos clientes.
+- Repetição Diária disponível nos dois formulários e aceite pela API; cria a ocorrência seguinte ao concluir, com passos por fazer e mantendo responsável e hora. A data parte da ocorrência anterior, tal como na repetição semanal. Um atraso não apaga obrigações pendentes.
+- Filtros seguem o manual, eventualmente após cada carga; a verificação diária e o cotão semanal não substituem essa frequência. Máquinas/modelos por confirmar; trabalhos internos, deslocações e acesso difícil são reservados a pessoal habilitado. Fontes, limites das avaliações e decisões em `docs/lavandaria-fontes.md`.
+- Não se alteraram registos reais nem se criaram tarefas com datas/responsáveis presumidos. O utilizador escolhe a primeira data e guarda cada rotina.
