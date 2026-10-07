@@ -30,14 +30,24 @@ Os emails autorizados estão na tabela members. O servidor valida o utilizador c
 
 ## Verificação
 
-`pnpm run typecheck`, `pnpm run build` e `node tests/supabase.mjs`.
+`pnpm run typecheck`, `pnpm run build`, `node tests/supabase.mjs` e `node tests/dashboard.mjs`.
 
-Testes de transporte simulado: OTP, sessão, CRUD, versões concorrentes, recorrência, limites da colaboradora, prioridades privadas e origem dos pedidos. Validar após publicação com utilizadores reais: código por email, criar/atribuir tarefa, fotografia, conclusão, histórico e acesso da colaboradora.
+Testes de transporte simulado: OTP, sessão, CRUD, versões concorrentes, recorrência, limites da colaboradora, prioridades privadas, origem dos pedidos, lixo recuperável e permissões para apagar. Testes de renderização verificam a visibilidade de tarefas sem data, ações Feita/Apagar e regras de avisos (adiamentos, prazos reais, chegadas e revisões). Validar após publicação com utilizadores reais: código por email, criar/atribuir tarefa, fotografia, conclusão, histórico e acesso da colaboradora.
 
 ## Estado e limitações
 
-Código preparado e compilado. Publicação, chave secreta de execução e envio de emails requerem configuração na conta da proprietária. A app anterior continua a funcionar até o novo endereço passar a verificação real.
+App publicada em https://casa-em-dia.as-lcorreia.workers.dev . A entrada por email e a criação de tarefas foram confirmadas pela proprietária em 7 de outubro de 2026.
 
 A migração leu a base Sites em 7 de outubro de 2026: nenhum registo de tarefas, estadias, histórico ou fotografias. Manteve a proprietária e preparou o acesso do marido no Supabase.
 
-Talkguest, WhatsApp, interpretação de fotografias, pesquisa autónoma e notificações fora da aplicação ainda não estão integrados. Os lembretes existentes no ChatGPT continuam a consultar a base antiga até à mudança explicitamente verificada.
+Talkguest, WhatsApp, interpretação de fotografias, pesquisa autónoma e notificações fora da aplicação ainda não estão integrados. O resumo diário existente no ChatGPT foi atualizado em 7 de outubro de 2026 para consultar public.records da nova base Supabase, respeitando deletedAt. Este acompanhamento não é push da app. O Assistente organiza registos por regras e permite definir prazos, revisões e próximos passos; não tem um fornecedor de IA configurado.
+
+
+## Tarefas, avisos e lixo
+
+- Feita conclui a tarefa e conserva-a no Histórico. Nas tarefas recorrentes, a próxima ocorrência mantém o comportamento existente.
+- Apagar usa DELETE /api/records com id e version: preenche data.deletedAt, sem remover fotografias ou histórico. Mais → Lixo permite recuperar por PATCH, action=restore.
+- Gestão pode apagar tarefas visíveis; Colaboração apenas as criadas pela própria pessoa. As verificações são feitas no servidor, incluindo versão e origem.
+- Registos apagados não aparecem em listas, prioridades ou avisos. POST não permite contornar o lixo.
+- O sino agrupa avisos por assunto; os dados atualizam-se após ações, ao regressar à janela e a cada minuto.
+- Um adiamento futuro suprime lembretes comuns. Não esconde um prazo real hoje nem informação em falta numa estadia com entrada nos próximos dois dias.
