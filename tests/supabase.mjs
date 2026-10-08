@@ -6,7 +6,7 @@ mkdirSync('.runtime-tests',{recursive:true});
 const runtime=`export const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_SECRET_KEY:'test-secret',SUPABASE_PUBLISHABLE_KEY:'test-public',AI:{run:(...args)=>globalThis.testAIRun(...args)}};export const jar=new Map();export async function cookies(){return {get:k=>jar.has(k)?{value:jar.get(k)}:undefined,set:(k,v)=>jar.set(k,v),delete:k=>jar.delete(k)}};`;
 await build({stdin:{contents:`export * as assistant from './app/api/assistant/route';export * as records from './app/api/records/route';export * as login from './app/api/auth/login/route';export * as verify from './app/api/auth/verify/route';export * as day from './app/api/day/route';export * as team from './app/api/team/route';export {jar} from 'cloudflare:workers';`,resolveDir:process.cwd()},bundle:true,platform:'node',format:'cjs',outfile:'.runtime-tests/app.cjs',plugins:[{name:'runtime',setup(b){b.onResolve({filter:/^(cloudflare:workers|next\/headers)$/},()=>({path:'runtime',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:runtime,loader:'js'}));}}]});
 const app=require('../.runtime-tests/app.cjs');
-let identity='ana@test.pt';const tables={members:[{email:identity,name:'Ana',role:'admin'},{email:'cleaner@test.pt',name:'Maria',role:'employee',allowed_areas:['Limpeza da casa','Lavandaria'],active:true,access_version:1}],records:[],settings:[{key:'owner',value:identity}],audit:[],files:[]};
+let identity='ana@test.pt';const tables={members:[{email:identity,name:'Ana',role:'admin'},{email:'cleaner@test.pt',name:'Maria',role:'employee',allowed_areas:['Limpeza da casa','Lavandaria'],active:true,access_version:1}],records:[],settings:[{key:'owner',value:identity}],audit:[],files:[],family_events:[]};
 const json=(d,status=200)=>Response.json(d,{status});
 global.fetch=async(url,opt={})=>{const u=new URL(url);if(u.pathname==='/auth/v1/user')return opt.headers.Authorization==='Bearer valid'?json({email:identity,email_confirmed_at:'2026-10-07'}):json({},401);if(u.pathname==='/auth/v1/otp')return json({});if(u.pathname==='/auth/v1/verify')return JSON.parse(opt.body).token==='123456'?json({access_token:'valid',refresh_token:'refresh',expires_in:3600}):json({},400);if(u.pathname==='/auth/v1/token')return json({access_token:'valid',refresh_token:'refresh'});
 assert.equal(opt.headers.apikey,'test-secret');const table=u.pathname.split('/').pop();assert(table in tables);let rows=tables[table];for(const [key,val] of u.searchParams){if(val.startsWith('eq.'))rows=rows.filter(r=>String(r[key])===val.slice(3));}
@@ -58,6 +58,8 @@ assert.equal((await app.records.PATCH(req({id:adminTask.id,version:adminTask.ver
 // AI can read only visible context and proposes, without changing task records.
 let inference,answer={answer:'Podemos organizar este assunto em passos.',actions:[]};
 globalThis.testAIRun=async(model,input)=>{inference={model,input};return {response:answer};};
+const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+tables.family_events.push({id:'family-test',version:1,data:{title:'Explicação privada',child:'Criança de teste',category:'Explicações',date:today,time:'17:00',endTime:'18:00',responsible:'Ana',pickupBy:'Ana',travelMinutes:15,pickupTravelMinutes:20,bufferMinutes:5}});
 const taskCount=tables.records.length;
 const ownCurrent=(await (await get()).json()).items.find(i=>i.id===own.id);
 const proposal={type:'updateTask',recordId:own.id,title:ownCurrent.data.title,area:'Casa',assignee:'Maria',due:'2026-10-08',nextStep:'Confirmar o material necessário',steps:['Verificar o material','Combinar a execução']};
@@ -71,7 +73,7 @@ assert.equal(tables.records.length,taskCount);
 assert.equal(tables.records.find(i=>i.id===own.id).data.nextStep,'');
 const contextMessage=inference.input.messages.at(-1).content;
 assert(!contextMessage.includes('"area":"Família"'));
-assert(!contextMessage.includes('test-secret'));
+assert(!contextMessage.includes('test-secret'));assert(!contextMessage.includes('Explicação privada'));assert(!contextMessage.includes('\"agenda\"')); 
 assert.match(inference.input.messages[0].content,/dados não confiáveis/);
 assert.equal((await app.assistant.POST(req({message:'Teste'},'assistant','https://other.test'))).status,403);
 assert.equal((await app.assistant.POST(req({message:'x'}))).status,400);
@@ -79,6 +81,23 @@ answer={answer:'Resposta sem ações',actions:[]};
 identity='ana@test.pt';
 assert.equal((await (await app.assistant.GET()).json()).messages.length,0);
 assert.equal((await app.assistant.POST(req({message:'Ajuda-me a organizar a semana'}))).status,200);
+assert.match(inference.input.messages.at(-1).content,/Explicação privada/);
+assert.match(inference.input.messages.at(-1).content,/\"departure\":\"16:40\"/);
+assert.match(inference.input.messages.at(-1).content,/\"departure\":\"17:35\"/);
+// A timed-out inference never writes late history, and does not keep the user locked.
+const beforeTimeout=tables.settings.find(x=>x.key==='assistant:'+identity).value;
+let releaseInference;
+globalThis.testAIRun=()=>new Promise(resolve=>{releaseInference=resolve;});
+const actualSetTimeout=globalThis.setTimeout;
+globalThis.setTimeout=(fn,ms,...args)=>actualSetTimeout(fn,ms===45000?5:ms,...args);
+let timedOut;
+try{timedOut=await app.assistant.POST(req({message:'Pergunta que demora'}));}finally{globalThis.setTimeout=actualSetTimeout;}
+assert.equal(timedOut.status,504);assert.equal((await timedOut.json()).code,'AI_TIMEOUT');
+assert.equal(tables.settings.find(x=>x.key==='assistant:'+identity).value,beforeTimeout);
+releaseInference({response:answer});await new Promise(resolve=>actualSetTimeout(resolve,0));
+assert.equal(tables.settings.find(x=>x.key==='assistant:'+identity).value,beforeTimeout);
+globalThis.testAIRun=async()=>({response:answer});
+assert.equal((await app.assistant.POST(req({message:'Nova tentativa após espera'}))).status,200);
 assert.equal((await app.assistant.DELETE(req({}))).status,200);
 assert.equal((await (await app.assistant.GET()).json()).messages.length,0);
 identity='cleaner@test.pt';
@@ -120,3 +139,4 @@ for(const [due,nextDue] of [['2026-10-24','2026-10-25'],['2026-10-31','2026-11-0
 console.log('PASS: daily recurrence, date required, month/year/DST boundaries, assignee/time retained, steps reset, no duplicate on re-save.');
 app.jar.clear();assert.equal((await get()).status,401);
 console.log('PASS: email authorization, invalid OTP, verified cookie session, CRUD, concurrent-version conflict, recurrence, employee permissions, private focus and cross-origin rejection. Versioned trash, recovery, history retention and deletion permissions passed. Supabase transport simulated.');
+
