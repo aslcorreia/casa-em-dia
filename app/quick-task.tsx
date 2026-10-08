@@ -1,17 +1,18 @@
 'use client';
 import {useState} from 'react';
+import {requestJSON} from '@/lib/client-request';
 import {Check,ChevronRight,Plus,X} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {areas,Data,Item,isOpen,mayUseArea,Member} from '@/lib/model';
 import {templatesFor,templateDraft} from '@/lib/entry-templates';
-type Props={draft:Data;team:(Partial<Member>&{name:string})[];allowedAreas?:readonly string[];admin:boolean;today:string;items?:Item[];onClose:()=>void;onSaved:(id:string,data:Data)=>Promise<void>;onDetails:(data:Data)=>void;onBusy?:(busy:boolean)=>void};
+type Props={draft:Data;team:(Partial<Member>&{name:string})[];allowedAreas?:readonly string[];admin:boolean;today:string;items?:Item[];onClose:()=>void;onSaved:(id:string,data:Data,item?:Item)=>Promise<void>;onDetails:(data:Data)=>void;onBusy?:(busy:boolean)=>void};
 export function QuickTaskForm({draft,team,admin,today,items=[],onClose,onSaved,onDetails,onBusy,allowedAreas=areas}:Props){
  const [data,setData]=useState(draft),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const change=(key:keyof Data,value:string)=>setData(d=>({...d,[key]:value}));
  const setSteps=(steps:Data['steps'])=>setData(d=>({...d,steps,nextStep:steps.find(s=>!s.done)?.title||''}));
  const tomorrow=new Date(Date.parse(today+'T12:00:00Z')+86400000).toISOString().slice(0,10);
  const duplicates=items.filter(i=>i.kind==='task'&&isOpen(i)&&i.data.area===data.area&&i.data.title.trim().toLocaleLowerCase('pt-PT')===data.title.trim().toLocaleLowerCase('pt-PT'));
- const submit=async(e:React.FormEvent)=>{e.preventDefault();if(busy)return;if(data.repeat!=='Não repetir'&&!data.due){setError('Escolhe a primeira data para repetir esta tarefa.');return;}setBusy(true);onBusy?.(true);setError('');try{const r=await fetch('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'task',data})});if(!r.ok){const text=await r.text();let message=text;try{message=JSON.parse(text).error||text;}catch{}throw new Error(message);}const p=await r.json() as {id:string};await onSaved(p.id,data);}catch(e){setError((e as Error).message);}finally{setBusy(false);onBusy?.(false);}};
+ const submit=async(e:React.FormEvent)=>{e.preventDefault();if(busy)return;if(data.repeat!=='Não repetir'&&!data.due){setError('Escolhe a primeira data para repetir esta tarefa.');return;}setBusy(true);onBusy?.(true);setError('');try{const p=await requestJSON<{id:string;item?:Item}>('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'task',data})});await onSaved(p.id,data,p.item);}catch(e){setError((e as Error).message);}finally{setBusy(false);onBusy?.(false);}};
  return <form onSubmit={submit} className="quick-task-form">
   <label className="field"><span>O que é preciso fazer?</span><input autoFocus required minLength={2} maxLength={160} value={data.title} disabled={busy} onChange={e=>change('title',e.target.value)} placeholder="Escreve ou escolhe um modelo abaixo"/></label>
   <div className="quick-task-fields"><label className="field"><span>Onde?</span><select value={data.area} disabled={busy} onChange={e=>change('area',e.target.value)}>{areas.filter(a=>allowedAreas.includes(a)&&(admin||a!=='Família')).map(a=><option key={a}>{a}</option>)}</select></label><label className="field"><span>Quem trata?</span><select value={data.assignee} onChange={e=>change('assignee',e.target.value)} disabled={!admin||busy}>{Array.from(new Set(['Por atribuir',...team.filter(m=>m.role?mayUseArea(m as Member,data.area):true).map(m=>m.name),data.assignee])).map(name=><option key={name}>{name}</option>)}</select></label></div>

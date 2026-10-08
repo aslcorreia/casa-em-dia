@@ -20,7 +20,7 @@ assert.equal((await app.verify.POST(req({email:identity,code:'123456'}))).status
 assert.equal(app.jar.get('ced-access'),'valid');
 assert.equal((await get()).status,200);
 assert.equal((await app.records.POST(req({kind:'task',data:{title:'Rotina sem data',area:'Casa',repeat:'Semanal'}}))).status,400);
-assert.equal((await app.records.POST(req({kind:'task',data:{title:'Limpar casa',area:'Casa',assignee:'Maria',due:'2026-10-07',repeat:'Semanal'}}))).status,200);
+const created=await app.records.POST(req({kind:'task',data:{title:'Limpar casa',area:'Casa',assignee:'Maria',due:'2026-10-07',repeat:'Semanal'}}));assert.equal(created.status,200);const savedResponse=await created.json();assert.equal(savedResponse.item.id,savedResponse.id);assert.equal(savedResponse.item.version,1);assert.equal(savedResponse.item.data.area,'Limpeza da casa');assert.equal(savedResponse.item.created_by,identity);
 let item=(await (await get()).json()).items[0];
 assert.equal((await app.records.POST(req({...item,version:0}))).status,409);
 assert.equal((await app.records.POST(req({...item,data:{...item.data,status:'Concluído'}}))).status,200);
@@ -83,7 +83,7 @@ assert.equal((await app.assistant.DELETE(req({}))).status,200);
 assert.equal((await (await app.assistant.GET()).json()).messages.length,0);
 identity='cleaner@test.pt';
 assert.equal((await (await app.assistant.GET()).json()).messages.length,2);
-answer='invalid json';assert.equal((await app.assistant.POST(req({message:'Pergunta de teste'}))).status,503);
+answer='invalid json';assert.equal((await app.assistant.POST(req({message:'Pergunta de teste'}))).status,502);
 console.log('AI tests passed: private conversation, role-scoped context, validated proposals, no automatic task writes, stale-version metadata and provider-error handling. Inference simulated.');
 // A renamed lodging still accepts stays and reads records created before the rename.
 identity='ana@test.pt';
