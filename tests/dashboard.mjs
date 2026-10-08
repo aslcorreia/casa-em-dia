@@ -3,8 +3,8 @@ import {mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url),{build}=require(require.resolve('esbuild',{paths:[require.resolve('wrangler')]}));
 mkdirSync('.runtime-tests',{recursive:true});
-await build({stdin:{contents:"export {default as FocusDay} from './app/focus-day';export {notices,recordSchema,assistantItems,possibleDuplicates} from './lib/model';export {default as SpaceCards} from './app/space-cards';export {default as Assistant} from './app/assistant';export {default as Notifications} from './app/notifications';export {QuickTaskForm} from './app/quick-task';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'cjs',jsx:'automatic',external:['react','react-dom','react-dom/server'],outfile:'.runtime-tests/dashboard.cjs'});
-const {FocusDay,recordSchema,SpaceCards,QuickTaskForm,notices,assistantItems,possibleDuplicates,Assistant,Notifications}=require('../.runtime-tests/dashboard.cjs');
+await build({stdin:{contents:"export {default as RecentTask} from './app/recent-task';export {default as EmployeeDay} from './app/employee-day';export {default as FocusDay} from './app/focus-day';export {notices,recordSchema,assistantItems,possibleDuplicates} from './lib/model';export {default as SpaceCards} from './app/space-cards';export {default as Assistant} from './app/assistant';export {default as Notifications} from './app/notifications';export {QuickTaskForm} from './app/quick-task';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'cjs',jsx:'automatic',external:['react','react-dom','react-dom/server'],outfile:'.runtime-tests/dashboard.cjs'});
+const {RecentTask,EmployeeDay,FocusDay,recordSchema,SpaceCards,QuickTaskForm,notices,assistantItems,possibleDuplicates,Assistant,Notifications}=require('../.runtime-tests/dashboard.cjs');
 const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
 const initial=recordSchema.parse({title:'Tarefa base',area:'Casa'});
 const item=(id,title,patch={},kind='task')=>({id,kind,data:{...initial,title,...patch},version:1,updated_at:'2026-10-07T14:11:00Z',created_by:'ana@test.pt'});
@@ -66,3 +66,15 @@ assert.equal(possibleDuplicates([item('dup1','Tarefa Á'),item('dup2','tarefa a'
 const notifications=renderToStaticMarkup(React.createElement(Notifications,{items:cases,today:now,name:'Ana',open:()=>{},refresh:()=>{}}));
 assert.match(notifications,/6 assuntos precisam de atenção/);
 console.log('Task actions, soft-deletion visibility, due dates, snooze exceptions, guest arrivals, review reminders and actionable organizer passed.');
+
+// A newly saved undated task stays visible before the collapsed list, even with older dated work.
+const recentItems=[...Array.from({length:4},(_,n)=>item(String(n),'Older dated '+n,{due:'2026-10-07'})),item('new','Saved without deadline')];
+const pinned=renderToStaticMarkup(React.createElement(FocusDay,{...props,items:recentItems,highlightedId:'new'}));
+assert(pinned.indexOf('Saved without deadline')<pinned.indexOf('Ver os outros'), 'Saved task must be in the visible three rows');
+const confirmation=renderToStaticMarkup(React.createElement(RecentTask,{item:recentItems.at(-1),open:()=>{},dismiss:()=>{}}));
+assert.match(confirmation,/Tarefa acabada de guardar/);assert.match(confirmation,/Saved without deadline/);
+assert.equal(renderToStaticMarkup(React.createElement(RecentTask,{item:item('done','Completed',{status:'Concluído'}),open:()=>{},dismiss:()=>{}})), '');
+const employeeDay=renderToStaticMarkup(React.createElement(EmployeeDay,{items:[item('waiting','Wait for technician',{assignee:'Maria',status:'À espera',waitingFor:'Técnico'})],me:{name:'Maria',email:'m@example.test',role:'employee',allowed_areas:['Limpeza da casa']},today:'2026-10-07',busy:false,complete:()=>{},open:()=>{},report:()=>{},history:()=>{}}));
+assert.match(employeeDay,/À espera de ajuda/);assert.doesNotMatch(employeeDay,/>Feita</);
+assert.doesNotMatch(notifications,/push, com a app fechada, ainda não estão ligadas/);
+console.log('PASS: recent undated work remains visible; completed confirmation disappears; waiting work is separated from employee execution.');

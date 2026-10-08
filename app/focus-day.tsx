@@ -1,5 +1,6 @@
 'use client';
 import TaskActions from './task-actions';
+import {requestJSON} from '@/lib/client-request';
 import {useEffect,useState} from 'react';
 import {Plus,Camera,Check,ArrowRight} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
@@ -8,16 +9,18 @@ import {Checkbox} from '@/components/ui/checkbox';
 import {toast} from 'sonner';
 import {areas,Data,Item,notices,isOpen,statusTone} from '@/lib/model';
 const format=(s:string)=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-PT',{day:'numeric',month:'short'}):'Sem data';
-async function checked(r:Response):Promise<any>{if(!r.ok){const t=await r.text();let message=t;try{message=JSON.parse(t).error||t;}catch{}throw new Error(message);}return r.json();}
-export default function FocusDay({items,me,today,initial,refresh,open,create,remove,canRemove}:{items:Item[];me:{name:string;role:string};today:string;initial:Data;refresh:()=>Promise<void>;open:(i:Item)=>void;create:(kind:Item['kind'])=>void;remove?:(i:Item)=>void;canRemove?:(i:Item)=>boolean}){
+export default function FocusDay({items,me,today,initial,refresh,open,create,remove,canRemove,highlightedId='',onSaved}:{items:Item[];me:{name:string;role:string};today:string;initial:Data;refresh:()=>Promise<void>;open:(i:Item)=>void;create:(kind:Item['kind'])=>void;remove?:(i:Item)=>void;canRemove?:(i:Item)=>boolean;highlightedId?:string;onSaved?:(i:Item)=>void}){
+ const [captured,setCaptured]=useState({id:'',parent:''});
+ const highlighted=captured.id&&captured.parent===highlightedId?captured.id:highlightedId;
  const [plan,setPlan]=useState<{date:string;ids:string[]}>({date:'',ids:[]});
  const [ready,setReady]=useState(false),[planError,setPlanError]=useState(''),[busy,setBusy]=useState(false);
  const [choosing,setChoosing]=useState(false),[selection,setSelection]=useState<string[]>([]),[search,setSearch]=useState('');
  const [listArea,setListArea]=useState('Todos os espaços'),[listPerson,setListPerson]=useState('Toda a equipa');
+ useEffect(()=>{if(highlighted){setListArea('Todos os espaços');setListPerson('Toda a equipa');}},[highlighted]);
  const [title,setTitle]=useState(''),[space,setSpace]=useState('Limpeza da casa'),[kind,setKind]=useState('task');
  const [action,setAction]=useState<{item:Item;type:'wait'|'snooze'}|null>(null),[when,setWhen]=useState(''),[who,setWho]=useState('');
  const admin=me.role==='admin';
- const fetchPlan=async()=>{try{setPlan(await checked(await fetch('/api/day')));setReady(true);setPlanError('');}catch(e){setPlanError((e as Error).message);}};
+ const fetchPlan=async()=>{try{setPlan(await requestJSON<{date:string;ids:string[]}>('/api/day'));setReady(true);setPlanError('');}catch(e){setPlanError((e as Error).message);}};
  useEffect(()=>{fetchPlan();},[]);
  const ids=plan.date===today?plan.ids:[];
  const active=items.filter(isOpen);
@@ -28,14 +31,14 @@ export default function FocusDay({items,me,today,initial,refresh,open,create,rem
  const pending=notices(items,today);
  const urgentIds=new Set(pending.map(a=>a.id));
  const needs=active.filter(i=>urgentIds.has(i.id));
- const visible=active.filter(i=>(listArea==='Todos os espaços'||i.data.area===listArea)&&(listPerson==='Toda a equipa'||i.data.assignee===listPerson)).sort((a,b)=>(a.data.due||'9999').localeCompare(b.data.due||'9999')||b.updated_at.localeCompare(a.updated_at));
+ const visible=active.filter(i=>(listArea==='Todos os espaços'||i.data.area===listArea)&&(listPerson==='Toda a equipa'||i.data.assignee===listPerson)).sort((a,b)=>Number(b.id===highlighted)-Number(a.id===highlighted)||(a.data.due||'9999').localeCompare(b.data.due||'9999')||b.updated_at.localeCompare(a.updated_at));
  const focusNow=async(i:Item)=>{if(busy)return;setBusy(true);try{await savePlan([i.id,...chosen.filter(x=>x.id!==i.id).map(x=>x.id)].slice(0,3));toast.success('Está em foco para hoje.');}catch(e){toast.error((e as Error).message);}finally{setBusy(false);}};
- const savePlan=async(next:string[])=>{const value=await checked(await fetch('/api/day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:today,ids:next})}));setPlan(value);};
- const update=async(i:Item,patch:Partial<Data>)=>{if(busy)return;setBusy(true);try{await checked(await fetch('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:i.id,kind:i.kind,version:i.version,data:{...i.data,...patch}})}));await refresh();toast.success(patch.status==='Concluído'?'Feito. Menos uma coisa para pensar.':'Guardado.');setAction(null);}catch(e){toast.error((e as Error).message);await refresh();}finally{setBusy(false);}};
- const capture=async(e:React.FormEvent)=>{e.preventDefault();if(busy)return;setBusy(true);try{await checked(await fetch('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,data:{...initial,title:title.trim(),area:space,assignee:me.name}})}));setTitle('');await refresh();toast.success('Guardado. Já aparece nos assuntos em aberto.');}catch(e){toast.error((e as Error).message);}finally{setBusy(false);}};
+ const savePlan=async(next:string[])=>{const value=await requestJSON<{date:string;ids:string[]}>('/api/day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:today,ids:next})});setPlan(value);};
+ const update=async(i:Item,patch:Partial<Data>)=>{if(busy)return;setBusy(true);try{const saved=await requestJSON<{item?:Item}>('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:i.id,kind:i.kind,version:i.version,data:{...i.data,...patch}})});if(saved.item)onSaved?.(saved.item);await refresh();toast.success(patch.status==='Concluído'?'Feito. Menos uma coisa para pensar.':'Guardado.');setAction(null);}catch(e){toast.error((e as Error).message);await refresh();}finally{setBusy(false);}};
+ const capture=async(e:React.FormEvent)=>{e.preventDefault();if(busy)return;setBusy(true);try{const saved=await requestJSON<{id:string;item?:Item}>('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,data:{...initial,title:title.trim(),area:space,assignee:me.name}})});if(saved.item)onSaved?.(saved.item);setCaptured({id:saved.id,parent:highlightedId});setTitle('');await refresh();toast.success('Guardado. Já aparece nos assuntos em aberto.');}catch(e){toast.error((e as Error).message);}finally{setBusy(false);}};
  const startAction=(i:Item,type:'wait'|'snooze')=>{setAction({item:i,type});setWhen(type==='wait'?i.data.reviewOn:i.data.snoozeUntil);setWho(i.data.waitingFor);};
  const choose=()=>{setSelection(ids.filter(id=>eligible.some(i=>i.id===id)));setSearch('');setChoosing(true);};
- const simpleRow=(i:Item)=><div className="record-item" key={i.id}><button className="record-row" onClick={()=>open(i)}><span className="row-main"><strong>{i.data.title}</strong><span>{i.data.area} · {i.data.assignee}</span>{i.data.status==='À espera'&&<span>À espera de {i.data.waitingFor||'responsável por indicar'} · verificar {format(i.data.reviewOn)}</span>}{i.data.snoozeUntil>today&&<span>Volta ao foco em {format(i.data.snoozeUntil)}</span>}</span><span className="row-end"><span className={"badge "+statusTone(i.data.status)}>{i.data.status}</span><small>{i.data.due?'Prazo: '+format(i.data.due):'Sem prazo'}</small></span><ArrowRight size={17}/></button><TaskActions item={i} busy={busy} onDone={i=>update(i,{status:'Concluído',steps:i.data.steps.map(s=>({...s,done:true}))})} onDelete={canRemove?.(i)?remove:undefined}/></div>;
+ const simpleRow=(i:Item)=><div className={"record-item "+(i.id===highlighted?"recent-record":"")} key={i.id}><button className="record-row" onClick={()=>open(i)}><span className="row-main"><strong>{i.data.title}</strong><span>{i.data.area} · {i.data.assignee}</span>{i.data.status==='À espera'&&<span>À espera de {i.data.waitingFor||'responsável por indicar'} · verificar {format(i.data.reviewOn)}</span>}{i.data.snoozeUntil>today&&<span>Volta ao foco em {format(i.data.snoozeUntil)}</span>}</span><span className="row-end"><span className={"badge "+statusTone(i.data.status)}>{i.data.status}</span><small>{i.data.due?'Prazo: '+format(i.data.due):'Sem prazo'}</small></span><ArrowRight size={17}/></button><TaskActions item={i} busy={busy} onDone={i=>update(i,{status:'Concluído',steps:i.data.steps.map(s=>({...s,done:true}))})} onDelete={canRemove?.(i)?remove:undefined}/></div>;
  return <div className="focus-day">
  <section className={"focus-card "+(!current?"focus-card-idle":"")} aria-label="Tarefa em foco"><div className="section-top"><h2>Agora</h2><button className="textbutton" disabled={!ready||busy} onClick={choose}>{chosen.length?'Escolher outra':'Escolher prioridades'}</button></div>
  {planError&&<p role="alert" className="errorbox">Não foi possível carregar as prioridades. <button onClick={fetchPlan}>Tentar novamente</button></p>}
