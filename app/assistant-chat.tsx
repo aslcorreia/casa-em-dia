@@ -10,11 +10,11 @@ export default function AssistantChat({onProposal}:{onProposal:(proposal:Proposa
  const load=async()=>{setLoading(true);try{const p=await requestJSON<{messages:ChatMessage[];ready:boolean}>('/api/assistant',{cache:'no-store'});setMessages(p.messages);setReady(p.ready);setError('');}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
  useEffect(()=>{load();},[]);
  useEffect(()=>{if(messages.length)end.current?.scrollIntoView({behavior:'smooth',block:'nearest'});},[messages.length,busy]);
- const send=async(value:string)=>{if(busy||loading||value.trim().length<2)return;setBusy(true);setPending(value.trim());setError('');try{const p=await requestJSON<{messages:ChatMessage[];ready:boolean}>('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:value.trim()})},60000);setMessages(p.messages);setReady(true);setText('');}catch(e){setError((e as Error).message);}finally{setBusy(false);setPending('');input.current?.focus();}};
+ const send=async(value:string)=>{if(busy||loading||value.trim().length<2)return;setBusy(true);setPending(value.trim());setError('');try{const p=await requestJSON<{messages:ChatMessage[];ready:boolean}>('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:value.trim()})},60000);setMessages(p.messages);setReady(true);setText('');}catch(e){setText(value.trim());setError((e as Error).message);}finally{setBusy(false);setPending('');input.current?.focus();}};
  const clear=async()=>{if(busy)return;setBusy(true);try{await requestJSON('/api/assistant',{method:'DELETE'});setMessages([]);setError('');}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  return <section className="ai-chat panel" aria-label="Conversar com a IA">
   <div className="ai-chat-heading"><div><Sparkles size={22}/><h2>Fala com o teu Assistente</h2></div>{messages.length>0&&<button className="textbutton" disabled={busy} onClick={clear}><RotateCcw size={15}/>Nova conversa</button>}</div>
-  <p className="ai-chat-description">Lê os registos a que tens acesso, ajuda a encontrar alternativas e propõe tarefas para reveres.</p>
+  <p className="ai-chat-description">Lê os registos a que tens acesso e, para a família, os horários dos próximos sete dias. Ajuda a organizar e propõe tarefas para reveres.</p>
   {loading?<p className="quiet-empty">A abrir a conversa…</p>:<>
    {ready===false&&<div className="notice compact"><div><strong>A IA está indisponível neste momento.</strong><p>Podes continuar a organizar as tarefas no acompanhamento abaixo.</p><button className="textbutton" onClick={load}>Verificar ligação</button></div></div>}
    {!messages.length&&<div className="ai-starters">{['O que devo tratar primeiro?','Ajuda-me a organizar a semana','Divide uma tarefa em pequenos passos','Prepara uma mensagem para confirmar os hóspedes'].map(question=><button key={question} disabled={busy||ready===false} onClick={()=>send(question)}>{question}</button>)}</div>}
@@ -25,3 +25,4 @@ export default function AssistantChat({onProposal}:{onProposal:(proposal:Proposa
   <p className="ai-chat-footnote">A IA recebe o teu pedido e uma seleção dos registos visíveis. A conversa é privada por utilizador e fica guardada na app. Pode enganar-se: revê as sugestões. Pesquisa de preços na Internet e análise de fotografias ainda não estão ligadas.</p>
  </section>;
 }
+
